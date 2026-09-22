@@ -32,6 +32,7 @@
 #include "player.h"
 #include "files.h"
 #include "playlist.h"
+#include "replaygain.h"
 #include "md5.h"
 
 #define PCM_BUF_SIZE		(36 * 1024)
@@ -681,6 +682,35 @@ static void log_md5_sum (const char *file, struct sound_params sound_params,
 }
 #endif
 
+/* Update the ReplayGain value to be applied to the sound of the given
+ * file. */
+static void update_replaygain (const char *file, const struct decoder *f)
+{
+	struct file_tags *tags;
+	double gain;
+
+	if (replaygain_get_mode() == REPLAYGAIN_MODE_OFF)
+		return;
+
+	tags = tags_new ();
+	f->info (file, tags, TAGS_REPLAY_GAIN);
+
+	if (replaygain_get_mode() == REPLAYGAIN_MODE_TRACK)
+		gain = tags->replaygain_track;
+	else
+		gain = tags->replaygain_album;
+
+	debug ("ReplayGain: file=%s gain=%f mode=%d", file, gain,
+			replaygain_get_mode());
+
+	if (gain != REPLAY_GAIN_UNSET)
+		replaygain_set_value_db (gain);
+	else
+		replaygain_unset ();
+
+	tags_free (tags);
+}
+
 /* Play a file (disk file) using the given decoder. next_file is precached. */
 static void play_file (const char *file, const struct decoder *f,
 		const char *next_file, struct out_buf *out_buf)
@@ -779,6 +809,7 @@ static void play_file (const char *file, const struct decoder *f,
 
 	audio_plist_set_time (file, f->get_duration(decoder_data));
 	audio_state_started_playing ();
+	update_replaygain (file, f);
 	precache_reset (&precache);
 
 	decode_loop (f, decoder_data, next_file, out_buf, &sound_params,
@@ -822,6 +853,7 @@ static void play_stream (const struct decoder *f, struct out_buf *out_buf)
 	}
 	else {
 		audio_state_started_playing ();
+		replaygain_unset ();
 		bitrate_list_init (&bitrate_list);
 		decode_loop (f, decoder_data, NULL, out_buf, &sound_params,
 				&null_md5, 0.0);

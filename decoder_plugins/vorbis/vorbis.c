@@ -14,6 +14,7 @@
 #endif
 
 #include <limits.h>
+#include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
 #include <strings.h>
@@ -100,6 +101,18 @@ static void get_comment_tags (OggVorbis_File *vf, struct file_tags *info)
 					"track=", strlen ("track=")))
 			info->track = atoi (comments->user_comments[i]
 					+ strlen ("track="));
+		else if (!strncasecmp(comments->user_comments[i],
+					"replaygain_track_gain=",
+					strlen ("replaygain_track_gain=")))
+			info->replaygain_track = atof (
+					comments->user_comments[i]
+					+ strlen ("replaygain_track_gain="));
+		else if (!strncasecmp(comments->user_comments[i],
+					"replaygain_album_gain=",
+					strlen ("replaygain_album_gain=")))
+			info->replaygain_album = atof (
+					comments->user_comments[i]
+					+ strlen ("replaygain_album_gain="));
 	}
 }
 
@@ -157,7 +170,7 @@ static void vorbis_tags (const char *file_name, struct file_tags *info,
 		return;
 	}
 
-	if (tags_sel & TAGS_COMMENTS)
+	if (tags_sel & (TAGS_COMMENTS | TAGS_REPLAY_GAIN))
 		get_comment_tags (&vf, info);
 
 	if (tags_sel & TAGS_TIME) {

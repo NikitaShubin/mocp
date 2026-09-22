@@ -50,6 +50,7 @@
 
 #include "softmixer.h"
 #include "equalizer.h"
+#include "replaygain.h"
 
 #include "out_buf.h"
 #include "protocol.h"
@@ -798,8 +799,22 @@ int audio_get_buf_fill ()
 
 int audio_send_pcm (const char *buf, const size_t size)
 {
+	char *replaygained = NULL;
 	char *softmixed = NULL;
 	char *equalized = NULL;
+
+	if (replaygain_is_active ())
+	{
+		replaygained = xmalloc (size);
+		memcpy (replaygained, buf, size);
+
+		replaygain_process_buffer (replaygained, size, &driver_sound_params);
+
+		buf = replaygained;
+	}
+	else
+		debug ("ReplayGain: send_pcm INACTIVE (mode=%d set=%d) fmt=%d size=%u",
+				replaygain_get_mode(), 0, driver_sound_params.fmt, (unsigned)size);
 
 	if (equalizer_is_active ())
 	{
@@ -834,6 +849,9 @@ int audio_send_pcm (const char *buf, const size_t size)
 
 	if (played < 0)
 		fatal ("Audio output error!");
+
+	if (replaygained)
+		free (replaygained);
 
 	if (softmixed && !equalized)
 		free (softmixed);
@@ -961,6 +979,7 @@ void audio_initialize ()
 
 	softmixer_init();
 	equalizer_init();
+	replaygain_init();
 
 	plist_init (&playlist);
 	plist_init (&shuffled_plist);
@@ -996,6 +1015,7 @@ void audio_exit ()
 
 	softmixer_shutdown();
 	equalizer_shutdown();
+	replaygain_shutdown();
 }
 
 void audio_seek (const int sec)

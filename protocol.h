@@ -149,6 +149,7 @@ enum noblock_io_status
 
 char *socket_name ();
 int get_int (int sock, int *i);
+int get_double (int sock, double *d);
 enum noblock_io_status get_int_noblock (int sock, int *i);
 int send_int (int sock, int i);
 char *get_str (int sock);

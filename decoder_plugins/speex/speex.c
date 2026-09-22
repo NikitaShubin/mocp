@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <strings.h>
+#include <stdlib.h>
 #include <inttypes.h>
 #include <assert.h>
 #include <speex/speex.h>
@@ -320,6 +321,14 @@ static void parse_comment (const char *str, struct file_tags *tags)
 		tags->track = atoi (str	+ strlen ("tracknumber="));
 	else if (!strncasecmp(str, "track=", strlen ("track=")))
 		tags->track = atoi (str	+ strlen ("track="));
+	else if (!strncasecmp(str, "replaygain_track_gain=",
+				strlen ("replaygain_track_gain=")))
+		tags->replaygain_track = atof (
+				str + strlen ("replaygain_track_gain="));
+	else if (!strncasecmp(str, "replaygain_album_gain=",
+				strlen ("replaygain_album_gain=")))
+		tags->replaygain_album = atof (
+				str + strlen ("replaygain_album_gain="));
 }
 
 static void get_comments (struct spx_data *data, struct file_tags *tags)
@@ -444,7 +453,7 @@ static void spx_info (const char *file_name, struct file_tags *tags,
 		struct spx_data *data = spx_open_internal (s);
 
 		if (data->ok) {
-			if (tags_sel & TAGS_COMMENTS)
+			if (tags_sel & (TAGS_COMMENTS | TAGS_REPLAY_GAIN))
 				get_comments (data, tags);
 			if (tags_sel & TAGS_TIME)
 				tags->time = count_time (data);

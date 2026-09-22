@@ -474,7 +474,7 @@ static void ffmpeg_info (const char *file_name,
 			info->time = ic->duration / AV_TIME_BASE;
 	}
 
-	if (!(tags_sel & TAGS_COMMENTS))
+	if (!(tags_sel & (TAGS_COMMENTS | TAGS_REPLAY_GAIN)))
 		goto end;
 
 	md = ic->metadata;
@@ -503,6 +503,16 @@ static void ffmpeg_info (const char *file_name,
 	entry = av_dict_get (md, "album", NULL, 0);
 	if (entry && entry->value && entry->value[0])
 		info->album = xstrdup (entry->value);
+
+	if (tags_sel & TAGS_REPLAY_GAIN) {
+		entry = av_dict_get (md, "REPLAYGAIN_TRACK_GAIN", NULL, 0);
+		if (entry && entry->value && entry->value[0])
+			info->replaygain_track = atof (entry->value);
+
+		entry = av_dict_get (md, "REPLAYGAIN_ALBUM_GAIN", NULL, 0);
+		if (entry && entry->value && entry->value[0])
+			info->replaygain_album = atof (entry->value);
+	}
 
 end:
 	avformat_close_input (&ic);

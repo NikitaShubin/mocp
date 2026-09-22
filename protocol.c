@@ -82,6 +82,18 @@ int get_int (int sock, int *i)
 	return res == ssizeof(int) ? 1 : 0;
 }
 
+/* Get a double value from the socket, return == 0 on error. */
+int get_double (int sock, double *d)
+{
+	ssize_t res;
+
+	res = recv (sock, d, sizeof(double), 0);
+	if (res == -1)
+		log_errno ("recv() failed when getting double", errno);
+
+	return res == ssizeof(double) ? 1 : 0;
+}
+
 /* Get an integer value from the socket without blocking. */
 enum noblock_io_status get_int_noblock (int sock, int *i)
 {
@@ -257,6 +269,16 @@ static void packet_buf_add_int (struct packet_buf *b, const int n)
 	b->len += sizeof(n);
 }
 
+/* Add a double value to the buffer */
+static void packet_buf_add_double (struct packet_buf *b, const double d)
+{
+	assert (b != NULL);
+
+	packet_buf_add_space (b, sizeof(d));
+	memcpy (b->buf + b->len, &d, sizeof(d));
+	b->len += sizeof(d);
+}
+
 /* Add a string value to the buffer. */
 static void packet_buf_add_str (struct packet_buf *b, const char *str)
 {
@@ -294,6 +316,8 @@ void packet_buf_add_tags (struct packet_buf *b, const struct file_tags *tags)
 		packet_buf_add_str (b, tags->album ? tags->album : "");
 		packet_buf_add_int (b, tags->track);
 		packet_buf_add_int (b, tags->filled & TAGS_TIME ? tags->time : -1);
+		packet_buf_add_double (b, tags->replaygain_track);
+		packet_buf_add_double (b, tags->replaygain_album);
 		packet_buf_add_int (b, tags->filled);
 	}
 	else {
@@ -304,6 +328,8 @@ void packet_buf_add_tags (struct packet_buf *b, const struct file_tags *tags)
 		packet_buf_add_str (b, ""); /* album */
 		packet_buf_add_int (b, -1); /* track */
 		packet_buf_add_int (b, -1); /* time */
+		packet_buf_add_double (b, REPLAY_GAIN_UNSET); /* replaygain_track */
+		packet_buf_add_double (b, REPLAY_GAIN_UNSET); /* replaygain_album */
 		packet_buf_add_int (b, 0); /* filled */
 	}
 }
@@ -391,6 +417,18 @@ struct file_tags *recv_tags (int sock)
 
 	if (!get_int(sock, &tags->time)) {
 		logit ("Error while receiving time");
+		tags_free (tags);
+		return NULL;
+	}
+
+	if (!get_double(sock, &tags->replaygain_track)) {
+		logit ("Error while receiving replaygain_track");
+		tags_free (tags);
+		return NULL;
+	}
+
+	if (!get_double(sock, &tags->replaygain_album)) {
+		logit ("Error while receiving replaygain_album");
 		tags_free (tags);
 		return NULL;
 	}

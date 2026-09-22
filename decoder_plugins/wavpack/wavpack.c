@@ -23,6 +23,7 @@
 
 #include <string.h>
 #include <strings.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
 #include <wavpack/wavpack.h>
@@ -167,30 +168,52 @@ static void wav_info (const char *file_name, struct file_tags *info,
 		info->filled |= TAGS_TIME;
 	}
 
-	if(tags_sel & TAGS_COMMENTS) {
-		if ((tag_len = WavpackGetTagItem (wpc, "title", NULL, 0)) > 0) {
-			info->title = (char *)xmalloc (++tag_len);
-			WavpackGetTagItem (wpc, "title", info->title, tag_len);
+	if (tags_sel & (TAGS_COMMENTS | TAGS_REPLAY_GAIN)) {
+		if (tags_sel & TAGS_COMMENTS) {
+			if ((tag_len = WavpackGetTagItem (wpc, "title", NULL, 0)) > 0) {
+				info->title = (char *)xmalloc (++tag_len);
+				WavpackGetTagItem (wpc, "title", info->title, tag_len);
+			}
+
+			if ((tag_len = WavpackGetTagItem (wpc, "artist", NULL, 0)) > 0) {
+				info->artist = (char *)xmalloc (++tag_len);
+				WavpackGetTagItem (wpc, "artist", info->artist, tag_len);
+			}
+
+			if ((tag_len = WavpackGetTagItem (wpc, "album", NULL, 0)) > 0) {
+				info->album = (char *)xmalloc (++tag_len);
+				WavpackGetTagItem (wpc, "album", info->album, tag_len);
+			}
+
+			if ((tag_len = WavpackGetTagItem (wpc, "track", NULL, 0)) > 0) {
+				tag = (char *)xmalloc (++tag_len);
+				WavpackGetTagItem (wpc, "track", tag, tag_len);
+				info->track = atoi (tag);
+				free (tag);
+			}
+
+			info->filled |= TAGS_COMMENTS;
 		}
 
-		if ((tag_len = WavpackGetTagItem (wpc, "artist", NULL, 0)) > 0) {
-			info->artist = (char *)xmalloc (++tag_len);
-			WavpackGetTagItem (wpc, "artist", info->artist, tag_len);
-		}
+		if (tags_sel & TAGS_REPLAY_GAIN) {
+			if ((tag_len = WavpackGetTagItem (wpc, "replaygain_track_gain",
+							NULL, 0)) > 0) {
+				tag = (char *)xmalloc (++tag_len);
+				WavpackGetTagItem (wpc, "replaygain_track_gain", tag,
+						tag_len);
+				info->replaygain_track = atof (tag);
+				free (tag);
+			}
 
-		if ((tag_len = WavpackGetTagItem (wpc, "album", NULL, 0)) > 0) {
-			info->album = (char *)xmalloc (++tag_len);
-			WavpackGetTagItem (wpc, "album", info->album, tag_len);
+			if ((tag_len = WavpackGetTagItem (wpc, "replaygain_album_gain",
+							NULL, 0)) > 0) {
+				tag = (char *)xmalloc (++tag_len);
+				WavpackGetTagItem (wpc, "replaygain_album_gain", tag,
+						tag_len);
+				info->replaygain_album = atof (tag);
+				free (tag);
+			}
 		}
-
-		if ((tag_len = WavpackGetTagItem (wpc, "track", NULL, 0)) > 0) {
-			tag = (char *)xmalloc (++tag_len);
-			WavpackGetTagItem (wpc, "track", tag, tag_len);
-			info->track = atoi (tag);
-			free (tag);
-		}
-
-		info->filled |= TAGS_COMMENTS;
 	}
 
 	WavpackCloseFile (wpc);

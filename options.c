@@ -601,6 +601,9 @@ void options_init ()
 	add_bool ("Softmixer_SaveState", true);
 	add_bool ("Equalizer_SaveState", true);
 
+	add_symb ("ReplayGainMode", "Off", CHECK_SYMBOL(3), "Off", "Track", "Album");
+	add_bool ("ReplayGainLimit", true);
+
 	add_bool ("ShowHiddenFiles", false);
 	add_bool ("HideFileExtension", false);
 	add_bool ("ShowFormat", true);

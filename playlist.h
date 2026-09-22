@@ -13,8 +13,13 @@ extern "C" {
 enum tags_select
 {
 	TAGS_COMMENTS	= 0x01, /* artist, title, etc. */
-	TAGS_TIME	= 0x02 /* time of the file. */
+	TAGS_TIME	= 0x02, /* time of the file. */
+	TAGS_REPLAY_GAIN = 0x04 /* ReplayGain values. */
 };
+
+/* Value of the replaygain fields when the corresponding tag is not present
+ * in the file. */
+#define REPLAY_GAIN_UNSET (-1000.0)
 
 struct file_tags
 {
@@ -23,6 +28,8 @@ struct file_tags
 	char *album;
 	int track;
 	int time;
+	double replaygain_track; /* ReplayGain track gain in dB */
+	double replaygain_album; /* ReplayGain album gain in dB */
 	int filled; /* Which tags are filled: TAGS_COMMENTS, TAGS_TIME. */
 };
 

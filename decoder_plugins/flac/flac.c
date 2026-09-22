@@ -350,6 +350,14 @@ static void fill_tag (FLAC__StreamMetadata_VorbisComment_Entry *comm,
 		tags->track = atoi (value);
 		free (value);
 	}
+	else if (!strcasecmp(name, "replaygain_track_gain")) {
+		tags->replaygain_track = atof (value);
+		free (value);
+	}
+	else if (!strcasecmp(name, "replaygain_album_gain")) {
+		tags->replaygain_album = atof (value);
+		free (value);
+	}
 	else
 		free (value);
 
@@ -413,7 +421,7 @@ static void flac_info (const char *file_name, struct file_tags *info,
 		flac_close (data);
 	}
 
-	if (tags_sel & TAGS_COMMENTS)
+	if (tags_sel & (TAGS_COMMENTS | TAGS_REPLAY_GAIN))
 		get_vorbiscomments (file_name, info);
 }
 

@@ -195,6 +195,21 @@
 # effectively disabled the mixer.  The default is 0.25.
 #Equalizer_SaveState = yes
 
+# ReplayGain normalization.  Possible values:
+#   'Off'    - no normalization.
+#   'Track'  - normalize each track to the same loudness using the
+#              REPLAYGAIN_TRACK_GAIN tag.
+#   'Album'  - normalize tracks of an album using the REPLAYGAIN_ALBUM_GAIN
+#              tag, keeping the relative loudness within an album.
+# Supported for MP3 (ID3v2 TXXX), FLAC, Ogg Vorbis and other formats
+# handled by the FFmpeg decoder.
+#ReplayGainMode = Off
+
+# Prevent clipping when ReplayGain normalization amplifies the sound?
+# If enabled, a track is never amplified above its original level, so
+# loud tracks are attenuated but quiet tracks are not boosted.
+#ReplayGainLimit = yes
+
 # Show files with dot at the beginning?
 #ShowHiddenFiles = no
 

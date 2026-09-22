@@ -63,7 +63,9 @@ mocp_SOURCES = log.c \
 	       lists.h \
 	       lists.c \
 	       equalizer.h \
-	       equalizer.c
+	       equalizer.c \
+	       replaygain.h \
+	       replaygain.c
 EXTRA_mocp_SOURCES = \
 		     md5.c \
 		     md5.h \

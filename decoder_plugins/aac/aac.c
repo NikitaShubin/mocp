@@ -16,6 +16,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <strings.h>
@@ -402,38 +403,92 @@ static char *get_tag (struct id3_tag *tag, const char *what)
 	return comm;
 }
 
+/* Get the value of a TXXX (user text) frame with the given description. */
+static char *get_txxx_tag (struct id3_tag *tag, const char *desc)
+{
+	unsigned int i;
+
+	for (i = 0; i < tag->nframes; i++) {
+		struct id3_frame *frame = tag->frames[i];
+		const id3_ucs4_t *ucs4;
+		char *frame_desc = NULL;
+		char *result = NULL;
+
+		if (strcmp(frame->id, "TXXX") != 0)
+			continue;
+
+		/* TXXX frame fields: text encoding, description, value. */
+		ucs4 = id3_field_getstring(&frame->fields[1]);
+		if (ucs4)
+			frame_desc = (char *)id3_ucs4_utf8duplicate (ucs4);
+
+		if (frame_desc && !strcasecmp(frame_desc, desc)) {
+			ucs4 = id3_field_getstring(&frame->fields[2]);
+			if (ucs4)
+				result = (char *)id3_ucs4_utf8duplicate (ucs4);
+		}
+
+		if (frame_desc)
+			free (frame_desc);
+
+		if (result)
+			return result;
+	}
+
+	return NULL;
+}
+
 /* Fill info structure with data from aac comments */
 static void aac_info (const char *file_name,
 		struct file_tags *info,
 		const int tags_sel)
 {
-	if (tags_sel & TAGS_COMMENTS) {
+	if (tags_sel & (TAGS_COMMENTS | TAGS_REPLAY_GAIN)) {
 		struct id3_tag *tag;
 		struct id3_file *id3file;
 		char *track = NULL;
 
 		id3file = id3_file_open (file_name, ID3_FILE_MODE_READONLY);
 		if (!id3file)
-			return;
+			goto time;
 		tag = id3_file_tag (id3file);
 		if (tag) {
-			info->artist = get_tag (tag, ID3_FRAME_ARTIST);
-			info->title = get_tag (tag, ID3_FRAME_TITLE);
-			info->album = get_tag (tag, ID3_FRAME_ALBUM);
-			track = get_tag (tag, ID3_FRAME_TRACK);
+			if (tags_sel & TAGS_COMMENTS) {
+				info->artist = get_tag (tag, ID3_FRAME_ARTIST);
+				info->title = get_tag (tag, ID3_FRAME_TITLE);
+				info->album = get_tag (tag, ID3_FRAME_ALBUM);
+				track = get_tag (tag, ID3_FRAME_TRACK);
 
-			if (track) {
-				char *end;
+				if (track) {
+					char *end;
 
-				info->track = strtol (track, &end, 10);
-				if (end == track)
-					info->track = -1;
-				free (track);
+					info->track = strtol (track, &end, 10);
+					if (end == track)
+						info->track = -1;
+					free (track);
+				}
+			}
+
+			if (tags_sel & TAGS_REPLAY_GAIN) {
+				char *rg;
+
+				rg = get_txxx_tag (tag, "REPLAYGAIN_TRACK_GAIN");
+				if (rg) {
+					info->replaygain_track = atof (rg);
+					free (rg);
+				}
+
+				rg = get_txxx_tag (tag, "REPLAYGAIN_ALBUM_GAIN");
+				if (rg) {
+					info->replaygain_album = atof (rg);
+					free (rg);
+				}
 			}
 		}
 		id3_file_close (id3file);
 	}
 
+time:
 	if (tags_sel & TAGS_TIME) {
 		struct aac_data *data;
 

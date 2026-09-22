@@ -68,6 +68,8 @@ void tags_clear (struct file_tags *tags)
 	tags->album = NULL;
 	tags->track = -1;
 	tags->time = -1;
+	tags->replaygain_track = REPLAY_GAIN_UNSET;
+	tags->replaygain_album = REPLAY_GAIN_UNSET;
 }
 
 /* Copy the tags data from src to dst freeing old fields if necessary. */
@@ -87,6 +89,8 @@ void tags_copy (struct file_tags *dst, const struct file_tags *src)
 
 	dst->track = src->track;
 	dst->time = src->time;
+	dst->replaygain_track = src->replaygain_track;
+	dst->replaygain_album = src->replaygain_album;
 	dst->filled = src->filled;
 }
 
@@ -100,6 +104,8 @@ struct file_tags *tags_new ()
 	tags->album = NULL;
 	tags->track = -1;
 	tags->time = -1;
+	tags->replaygain_track = REPLAY_GAIN_UNSET;
+	tags->replaygain_album = REPLAY_GAIN_UNSET;
 	tags->filled = 0;
 
 	return tags;
