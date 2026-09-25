@@ -23,7 +23,7 @@
 #include "log.h"
 #include "options.h"
 
-#define RINGBUF_SZ 32768
+#define RINGBUF_SZ 262144
 
 /* the client */
 static jack_client_t *client;
@@ -62,6 +62,12 @@ static int process_cb(jack_nframes_t nframes, void *unused ATTR_UNUSED)
 	if (play) {
 		size_t i;
 
+		/* zero the whole buffers first: jack_port_get_buffer() is not
+		 * guaranteed to return a cleared region, and playing garbage
+		 * in between valid frames produces audible pops. */
+		memset (out[0], 0, nframes * sizeof (jack_default_audio_sample_t));
+		memset (out[1], 0, nframes * sizeof (jack_default_audio_sample_t));
+
 		/* ringbuffer[1] is filled later, so we only need to check
 		 * it's space. */
 		size_t avail_data = jack_ringbuffer_read_space(ringbuffer[1]);
@@ -91,13 +97,10 @@ static int process_cb(jack_nframes_t nframes, void *unused ATTR_UNUSED)
 	}
 	else {
 		size_t i;
-		size_t size;
 
-		/* consume the input */
-		size = jack_ringbuffer_read_space(ringbuffer[1]);
-		jack_ringbuffer_read_advance (ringbuffer[0], size);
-		jack_ringbuffer_read_advance (ringbuffer[1], size);
-
+		/* Paused: leave the ring buffer contents untouched so that on
+		 * resume playback continues exactly where it stopped, without
+		 * skipping or repeating audio.  Just emit silence for JACK. */
 		for (i = 0; i < nframes; i++) {
 			out[0][i] = 0.0;
 			out[1][i] = 0.0;
@@ -221,6 +224,11 @@ static int moc_jack_open (struct sound_params *sound_params)
 	}
 
 	logit ("jack open");
+
+	/* On resume from pause the ring buffers still hold the audio where
+	 * we stopped, so do NOT drain them here; on a fresh open there is
+	 * nothing to drain either because reset (stop/seek) already cleared
+	 * the buffers via moc_jack_reset(). */
 	play = 1;
 
 	return 1;
@@ -316,9 +324,22 @@ static int moc_jack_get_buff_fill ()
 		/ sizeof(jack_default_audio_sample_t);
 }
 
+static void drain_ringbuffers (void)
+{
+	size_t avail;
+
+	avail = jack_ringbuffer_read_space (ringbuffer[0]);
+	jack_ringbuffer_read_advance (ringbuffer[0], avail);
+	avail = jack_ringbuffer_read_space (ringbuffer[1]);
+	jack_ringbuffer_read_advance (ringbuffer[1], avail);
+}
+
 static int moc_jack_reset ()
 {
-	//jack_ringbuffer_reset(ringbuffer); /*this is not threadsafe!*/
+	/* Discard any leftovers from the previous playback here (from the
+	 * caller thread); doing it through the process callback races with
+	 * the writer and corrupts/skips valid samples. */
+	drain_ringbuffers ();
 	return 1;
 }
 

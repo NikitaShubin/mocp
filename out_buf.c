@@ -169,6 +169,10 @@ static void *read_thread (void *arg)
 
 		if (buf->pause) {
 			logit ("paused");
+			if (buf->exit) {
+				logit ("exit");
+				break;
+			}
 			continue;
 		}
 
@@ -340,7 +344,10 @@ void out_buf_pause (struct out_buf *buf)
 {
 	LOCK (buf->mutex);
 	buf->pause = 1;
-	buf->reset_dev = 1;
+	/* Do NOT set reset_dev here: pausing must freeze the hardware
+	 * buffer contents so that playback resumes exactly where it stopped.
+	 * A device reset (and resulting drain of the ring buffers) is only
+	 * wanted on genuine stops/seeks, which go through out_buf_stop(). */
 	UNLOCK (buf->mutex);
 }
 

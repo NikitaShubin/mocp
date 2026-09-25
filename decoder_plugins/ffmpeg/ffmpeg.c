@@ -1193,6 +1193,7 @@ static int decode_packet (struct ffmpeg_data *data, AVPacket *pkt,
 		if (rc == 0 || rc == AVERROR(EAGAIN)) {
 			for (;;) {
 				int ret = avcodec_receive_frame (data->enc, frame);
+				int copied;
 
 				if (ret == AVERROR(EAGAIN))
 					break;
@@ -1206,7 +1207,8 @@ static int decode_packet (struct ffmpeg_data *data, AVPacket *pkt,
 					break;
 				}
 
-				process_frame (data, frame, buf, &buf_len, &filled);
+				copied = process_frame (data, frame, buf, &buf_len, &filled);
+				buf += copied;
 			}
 		}
 		else if (rc != AVERROR_EOF) {
@@ -1216,7 +1218,7 @@ static int decode_packet (struct ffmpeg_data *data, AVPacket *pkt,
 	}
 #else
 	do {
-		int len, got_frame;
+		int len, got_frame, copied;
 
 		len = decode_audio (data->enc, frame, &got_frame, pkt);
 
@@ -1237,7 +1239,8 @@ static int decode_packet (struct ffmpeg_data *data, AVPacket *pkt,
 			continue;
 		}
 
-		process_frame (data, frame, buf, &buf_len, &filled);
+		copied = process_frame (data, frame, buf, &buf_len, &filled);
+		buf += copied;
 	} while (pkt->size > 0);
 #endif
 
